@@ -1,26 +1,4 @@
-Let me rewrite the full execution plan with the corrected team structure. Clean slate.
-
----
-
-**Repo name first:**
-
-Here are three options — pick one:
-
-- `veridify` — verify + identify. Clean, brandable, sounds like a real product
-- `trustlens` — trust + lens (as in camera lens / seeing clearly). Visual, relevant
-- `proofchain` — proof + chain. Speaks to the verification chain concept
-
-My pick is **`veridify`**. It sounds like something you would actually pay for. It is memorable in a five-minute pitch. And it works as a product name beyond the hackathon.
-
----
-
-Now the full revised execution plan.
-
----
-
 # Veridify — Full Project Execution Plan
-## One language. One repo. Four people. One goal.
-
 ---
 
 ## Team & Roles — Final
@@ -46,8 +24,7 @@ veridify/
 
 ---
 
-## The Dependency Chain — Read This First
-
+## The Dependency Chain
 Nothing moves in the wrong order. This is the sequence everything depends on:
 
 ```
@@ -61,12 +38,11 @@ Nothing moves in the wrong order. This is the sequence everything depends on:
 8. Demo rehearsed and stable                (Everyone)
 ```
 
-Peter never waits for a real model. He builds against the mock from day one. David never starts testing until Milestone 3 is done. Mathematician runs in parallel the entire time.
+Peter should never wait for a real model. He shoud build against a mock from day one. David never starts testing until Milestone 3 is done. Mathematician runs in parallel the entire time.
 
 ---
 
 ## Milestone 0 — Foundation
-### Day 1 — Everyone. Nothing else starts until this is done.
 
 **Abdulmalik:**
 - [ ] Create GitHub repo named `veridify`, invite everyone
@@ -83,7 +59,7 @@ Peter never waits for a real model. He builds against the mock from day one. Dav
 
 **David:**
 - [ ] Clone the repo
-- [ ] Install Postman
+- [ ] Install Postman/Insomnia
 - [ ] Read the full judging criteria document — all six criteria and weights
 - [ ] Write down ten questions a judge might ask during Q&A and share with team
 
@@ -93,12 +69,15 @@ Peter never waits for a real model. He builds against the mock from day one. Dav
 - [ ] Begin sourcing Nigerian insurance fraud statistics for slide 1 and slide 7
 - [ ] Find the NAICOM annual report data on fraud losses
 
-**Milestone 0 is done when:** Everyone has cloned the repo, Squad sandbox keys exist in `.env.example`, and Colab runs without errors.
+**Milestone 0 is done when:** 
+- Everyone has cloned the repo
+- Squad sandbox keys exist in `.env.example`, 
+- Colab runs without errors.
 
 ---
 
 ## Milestone 1 — Data Pipeline Ready
-### Day 1–2 — Abdulmalik
+### Abdulmalik
 
 **Task 1.1 — Download datasets in this exact order:**
 
@@ -166,12 +145,13 @@ for split in ['train', 'val', 'test']:
 ```
 If any class has more than 2x the images of another, undersample the majority class. Equal representation matters.
 
-**Milestone 1 is done when:** Abdulmalik prints a clean class distribution table with no severe imbalance and one batch loads from each class without errors.
+**Milestone 1 is done when:** 
+- Abdulmalik prints a clean class distribution table with no severe imbalance and one batch loads from each class without errors.
 
 ---
 
 ## Milestone 2 — Mock Backend + Squad Integration
-### Day 1–3 — Abdulmalik
+### Abdulmalik
 
 Peter develops against this from day one. The mock means Peter never waits.
 
@@ -273,7 +253,7 @@ CREATE TABLE transactions (
 ---
 
 ## Milestone 3 — Model Trained and Serving
-### Day 2–4 — Abdulmalik
+### Abdulmalk
 
 **Task 3.1 — Build dual-branch model:**
 EfficientNetB0 spatial branch + frequency domain branch. Three-class output. We have already discussed this architecture in full.
@@ -300,7 +280,7 @@ One line change in `services/inference.py`. The mock function is replaced with t
 ---
 
 ## Milestone 4 — Frontend Dashboard
-### Day 2–5 — Peter
+### Peter
 
 Peter builds this entirely against the mock API. Real model swap is invisible to him.
 
@@ -333,7 +313,7 @@ Table of past verifications. Columns: timestamp, verdict, trust score, amount bi
 ---
 
 ## Milestone 5 — Full Integration + David's Testing
-### Day 4–5 — David leads, Abdulmalik + Peter support
+### David leads, Abdulmalik + Peter support
 
 **David owns the following test suite:**
 
@@ -364,7 +344,7 @@ Table of past verifications. Columns: timestamp, verdict, trust score, amount bi
 ---
 
 ## Milestone 6 — Pitch, Documentation, Rehearsal
-### Day 5–7 — Mathematician leads, everyone reviews
+### Mathematician leads, everyone reviews
 
 **Mathematician delivers:**
 
@@ -405,7 +385,7 @@ Round 3 — pressure run. David asks judge questions mid-demo. Everyone must sta
 ---
 
 ## Milestone 7 — Submission Ready
-### Day 7+ — Abdulmalik coordinates
+### Abdulmalik coordinates
 
 - [ ] GitHub README complete: what the project does, how to run it, environment variables needed
 - [ ] Demo URL live on Render and stable — test it from a different network
@@ -417,14 +397,10 @@ Round 3 — pressure run. David asks judge questions mid-demo. Everyone must sta
 
 ---
 
-## The One Thing That Will Sink You
+## The One Thing That Will Sink Us
 
-Say it together and mean it:
+We need to say it together and mean it:
 
 **The Squad transaction must fire visibly during the demo. Not described. Visible. The judge watches the balance decrease in real time.**
 
 Every single rehearsal must include this moment. It must be muscle memory by presentation day.
-
----
-
-**What do you want to go deep on right now — Milestone 0 setup or straight into Milestone 1 data pipeline?**
