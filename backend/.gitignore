@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+models/*.keras
+models/*.h5
+/tmp/
+*.egg-info/
+dist/
+build/
+.DS_Store
