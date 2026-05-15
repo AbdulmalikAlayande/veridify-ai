@@ -1,17 +1,25 @@
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore",
+        protected_namespaces=("settings_",),
+    )
+
     app_env: str = "development"
     app_name: str = "Veridifi"
     secret_key: str
 
     database_url: str
-    squad_secret_key: str
+    squad_secret_key: str = ""
     squad_base_url: str = "https://sandbox-api-d.squadco.com"
-    squad_webhook_secret: str
+    squad_webhook_secret: str = ""
+    squad_currency: str = "NGN"
 
     model_path: str = "./models/dual_branch_v1.keras"
     mock_inference: bool = True
@@ -24,10 +32,6 @@ class Settings(BaseSettings):
     cache_ttl_hours: int = 24
 
     allowed_origins: str = "http://localhost:5173"
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
 
 
 @lru_cache()
