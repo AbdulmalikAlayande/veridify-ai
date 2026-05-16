@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,6 +38,14 @@ class Settings(BaseSettings):
     cache_ttl_hours: int = 24
 
     allowed_origins: str = "http://localhost:5173"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _coerce_async_driver(cls, v: str) -> str:
+        # Render/Heroku give us `postgresql://...`; SQLAlchemy 2.x needs the asyncpg driver.
+        if isinstance(v, str) and v.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + v[len("postgresql://"):]
+        return v
 
 
 @lru_cache()
