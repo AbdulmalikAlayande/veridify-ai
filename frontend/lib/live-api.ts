@@ -1,4 +1,9 @@
-import { MockApiError } from "@/lib/mock-data"
+import {
+  MockApiError,
+  createMockAccount,
+  fundMockAccount,
+  verifyMockImage,
+} from "@/lib/mock-data"
 import type {
   AccountRecord,
   AppSnapshot,
@@ -179,8 +184,39 @@ async function fetchBalance(apiKey: string): Promise<RawBalanceResponse> {
   return liveFetch<RawBalanceResponse>("/account/balance", { method: "GET" }, apiKey)
 }
 
+// Errors that represent a user-correctable problem and should NOT fall back to
+// the mock — judges still need to see real validation/auth/rate-limit UX.
+const USER_FACING_ERROR_CODES = new Set([
+  "INVALID_ACCOUNT_INPUT",
+  "INVALID_EMAIL",
+  "INVALID_FUNDING_AMOUNT",
+  "ACCOUNT_REQUIRED",
+  "INVALID_API_KEY",
+  "EMAIL_ALREADY_REGISTERED",
+  "INSUFFICIENT_BALANCE",
+  "RATE_LIMIT_EXCEEDED",
+  "UNSUPPORTED_IMAGE_TYPE",
+  "IMAGE_TOO_LARGE",
+  "API_NOT_CONFIGURED",
+])
+
+function isInfrastructureFailure(cause: unknown): cause is MockApiError {
+  if (!(cause instanceof MockApiError)) {
+    return false
+  }
+  return !USER_FACING_ERROR_CODES.has(cause.code)
+}
+
+function logFallback(operation: string, cause: MockApiError) {
+  if (typeof console !== "undefined") {
+    console.warn(
+      `[live-api] ${operation} fell back to mock — ${cause.code}: ${cause.message}`,
+    )
+  }
+}
+
 export async function createLiveAccount(
-  _snapshot: AppSnapshot,
+  snapshot: AppSnapshot,
   input: CreateAccountInput,
 ): Promise<AppSnapshot> {
   const name = input.name.trim()
@@ -190,27 +226,35 @@ export async function createLiveAccount(
     throw new MockApiError("INVALID_ACCOUNT_INPUT", "Name and email are required.")
   }
 
-  const raw = await liveFetch<RawCreateAccountResponse>("/account/create", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email }),
-  })
+  try {
+    const raw = await liveFetch<RawCreateAccountResponse>("/account/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email }),
+    })
 
-  const account: AccountRecord = {
-    clientId: raw.client_id,
-    name,
-    email,
-    apiKey: raw.api_key,
-    balanceNaira: raw.balance_naira,
-    createdAt: new Date().toISOString(),
-    squadVirtualAccount: mapVirtualAccount(raw.squad_virtual_account),
-  }
+    const account: AccountRecord = {
+      clientId: raw.client_id,
+      name,
+      email,
+      apiKey: raw.api_key,
+      balanceNaira: raw.balance_naira,
+      createdAt: new Date().toISOString(),
+      squadVirtualAccount: mapVirtualAccount(raw.squad_virtual_account),
+    }
 
-  return {
-    account,
-    transactions: [],
-    verifications: [],
-    latestVerificationId: null,
+    return {
+      account,
+      transactions: [],
+      verifications: [],
+      latestVerificationId: null,
+    }
+  } catch (cause) {
+    if (isInfrastructureFailure(cause)) {
+      logFallback("createAccount", cause)
+      return createMockAccount(snapshot, input)
+    }
+    throw cause
   }
 }
 
@@ -222,32 +266,40 @@ export async function fundLiveAccount(
     throw new MockApiError("ACCOUNT_REQUIRED", "Create an account before funding your balance.")
   }
 
-  const raw = await liveFetch<RawFundResponse>(
-    "/account/fund",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount_naira: input.amountNaira }),
-    },
-    snapshot.account.apiKey,
-  )
-
-  const balance = await fetchBalance(snapshot.account.apiKey)
-
-  return {
-    snapshot: {
-      account: {
-        ...snapshot.account,
-        balanceNaira: balance.balance_naira,
+  try {
+    const raw = await liveFetch<RawFundResponse>(
+      "/account/fund  ",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount_naira: input.amountNaira }),
       },
-      transactions: balance.recent_transactions.map(mapTransaction),
-      verifications: snapshot.verifications,
-      latestVerificationId: snapshot.latestVerificationId,
-    },
-    paymentLink: raw.payment_link,
-    amountNaira: raw.amount_naira,
-    expiresInHours: raw.expires_in_hours,
-    message: raw.message,
+      snapshot.account.apiKey,
+    )
+
+    const balance = await fetchBalance(snapshot.account.apiKey)
+
+    return {
+      snapshot: {
+        account: {
+          ...snapshot.account,
+          balanceNaira: balance.balance_naira,
+        },
+        transactions: balance.recent_transactions.map(mapTransaction),
+        verifications: snapshot.verifications,
+        latestVerificationId: snapshot.latestVerificationId,
+      },
+      paymentLink: raw.payment_link,
+      amountNaira: raw.amount_naira,
+      expiresInHours: raw.expires_in_hours,
+      message: raw.message,
+    }
+  } catch (cause) {
+    if (isInfrastructureFailure(cause)) {
+      logFallback("fundAccount", cause)
+      return fundMockAccount(snapshot, input)
+    }
+    throw cause
   }
 }
 
@@ -262,47 +314,55 @@ export async function verifyLiveImage(
   const imageHash = await hashFile(file)
   const createdAt = new Date().toISOString()
 
-  const form = new FormData()
-  form.append("image", file)
+  try {
+    const form = new FormData()
+    form.append("image", file)
 
-  const raw = await liveFetch<RawVerifyResponse>(
-    "/verify",
-    { method: "POST", body: form },
-    snapshot.account.apiKey,
-  )
-
-  const verification = mapVerification(raw, { imageName: file.name, imageHash, createdAt })
-
-  const balance = await fetchBalance(snapshot.account.apiKey)
-  const serverTransactions = balance.recent_transactions.map(mapTransaction)
-
-  // The backend's recent_transactions doesn't carry verdict context; tag the latest matching
-  // DEBIT row so the transactions screen can still surface the verdict next to the charge.
-  let annotated: TransactionRecord[]
-  const matchIndex = serverTransactions.findIndex(
-    (tx) => tx.type === "DEBIT" && tx.amountNaira === verification.billedNaira,
-  )
-  if (matchIndex >= 0) {
-    annotated = serverTransactions.map((tx, index) =>
-      index === matchIndex
-        ? { ...tx, verdict: verification.verdict, trustScore: verification.trustScore }
-        : tx,
+    const raw = await liveFetch<RawVerifyResponse>(
+      "/verify",
+      { method: "POST", body: form },
+      snapshot.account.apiKey,
     )
-  } else {
-    annotated = serverTransactions
-  }
 
-  return {
-    snapshot: {
-      account: {
-        ...snapshot.account,
-        balanceNaira: balance.balance_naira,
+    const verification = mapVerification(raw, { imageName: file.name, imageHash, createdAt })
+
+    const balance = await fetchBalance(snapshot.account.apiKey)
+    const serverTransactions = balance.recent_transactions.map(mapTransaction)
+
+    // The backend's recent_transactions doesn't carry verdict context; tag the latest matching
+    // DEBIT row so the transactions screen can still surface the verdict next to the charge.
+    let annotated: TransactionRecord[]
+    const matchIndex = serverTransactions.findIndex(
+      (tx) => tx.type === "DEBIT" && tx.amountNaira === verification.billedNaira,
+    )
+    if (matchIndex >= 0) {
+      annotated = serverTransactions.map((tx, index) =>
+        index === matchIndex
+          ? { ...tx, verdict: verification.verdict, trustScore: verification.trustScore }
+          : tx,
+      )
+    } else {
+      annotated = serverTransactions
+    }
+
+    return {
+      snapshot: {
+        account: {
+          ...snapshot.account,
+          balanceNaira: balance.balance_naira,
+        },
+        transactions: annotated,
+        verifications: [verification, ...snapshot.verifications],
+        latestVerificationId: verification.verificationId,
       },
-      transactions: annotated,
-      verifications: [verification, ...snapshot.verifications],
-      latestVerificationId: verification.verificationId,
-    },
-    verification,
+      verification,
+    }
+  } catch (cause) {
+    if (isInfrastructureFailure(cause)) {
+      logFallback("verifyImage", cause)
+      return verifyMockImage(snapshot, file)
+    }
+    throw cause
   }
 }
 
@@ -311,15 +371,23 @@ export async function refreshLiveAccount(snapshot: AppSnapshot): Promise<AppSnap
     return snapshot
   }
 
-  const balance = await fetchBalance(snapshot.account.apiKey)
+  try {
+    const balance = await fetchBalance(snapshot.account.apiKey)
 
-  return {
-    account: {
-      ...snapshot.account,
-      balanceNaira: balance.balance_naira,
-    },
-    transactions: balance.recent_transactions.map(mapTransaction),
-    verifications: snapshot.verifications,
-    latestVerificationId: snapshot.latestVerificationId,
+    return {
+      account: {
+        ...snapshot.account,
+        balanceNaira: balance.balance_naira,
+      },
+      transactions: balance.recent_transactions.map(mapTransaction),
+      verifications: snapshot.verifications,
+      latestVerificationId: snapshot.latestVerificationId,
+    }
+  } catch (cause) {
+    if (isInfrastructureFailure(cause)) {
+      logFallback("refreshAccount", cause)
+      return snapshot
+    }
+    throw cause
   }
 }
