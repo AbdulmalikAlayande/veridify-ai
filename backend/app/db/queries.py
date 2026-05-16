@@ -310,10 +310,15 @@ async def log_webhook(
     except (json.JSONDecodeError, UnicodeDecodeError):
         parsed = {"_raw": raw_payload.decode("utf-8", errors="replace")}
 
-    event_type = parsed.get("Event") if isinstance(parsed, dict) else None
+    event_type = None
     squad_ref = None
-    if isinstance(parsed, dict) and isinstance(parsed.get("Body"), dict):
-        squad_ref = parsed["Body"].get("transaction_ref")
+    if isinstance(parsed, dict):
+        # Flat Squad virtual-account webhook (real shape)
+        squad_ref = parsed.get("transaction_reference") or parsed.get("transaction_ref")
+        event_type = parsed.get("event") or parsed.get("Event")
+        # Legacy {Event, Body} envelope (fallback)
+        if not squad_ref and isinstance(parsed.get("Body"), dict):
+            squad_ref = parsed["Body"].get("transaction_ref")
 
     log = WebhookLog(
         event_type=event_type,
