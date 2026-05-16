@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     squad_base_url: str = "https://sandbox-api-d.squadco.com"
     squad_webhook_secret: str = ""
     squad_currency: str = "NGN"
+    # Sandbox-friendly defaults — GTBank settlement account + test BVN/mobile
+    # supplied to Squad's B2B virtual-account endpoint. Override in .env for prod.
+    squad_beneficiary_account: str = "0123456789"
+    squad_test_bvn: str = "12345678901"
+    squad_test_mobile: str = "08000000000"
 
     model_path: str = "./models/dual_branch_v1.keras"
     mock_inference: bool = True
