@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: veridifi-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_NAME
+        value: Veridifi
+      - key: MOCK_INFERENCE
+        value: "true"
+      - key: VERIFICATION_COST_NAIRA
+        value: "175"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "60"
+      - key: MAX_IMAGE_SIZE_MB
+        value: "10"
+      - key: TEMP_FILE_DIR
+        value: /tmp/veridifi
+      - key: CACHE_TTL_HOURS
+        value: "24"
+      - key: SQUAD_BASE_URL
+        value: https://sandbox-api-d.squadco.com
+      - key: SQUAD_CURRENCY
+        value: NGN
+      - key: ALLOWED_ORIGINS
+        value: https://veridify.onrender.com
+      - key: SECRET_KEY
+        generateValue: true
+      # Secrets / per-deployment overrides — set in Render dashboard.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: veridifi-db
+          property: connectionString
+      - key: SQUAD_SECRET_KEY
+        sync: false
+      - key: SQUAD_WEBHOOK_SECRET
+        sync: false
+      - key: SQUAD_BENEFICIARY_ACCOUNT
+        sync: false
+      - key: SQUAD_TEST_BVN
+        sync: false
+      - key: SQUAD_TEST_MOBILE
+        sync: false
+
+databases:
+  - name: veridifi-db
+    databaseName: veridify
+    user: veridify
+    plan: free
