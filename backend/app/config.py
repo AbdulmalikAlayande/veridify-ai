@@ -42,9 +42,13 @@ class Settings(BaseSettings):
     @field_validator("database_url", mode="before")
     @classmethod
     def _coerce_async_driver(cls, v: str) -> str:
-        # Render/Heroku give us `postgresql://...`; SQLAlchemy 2.x needs the asyncpg driver.
-        if isinstance(v, str) and v.startswith("postgresql://"):
-            return "postgresql+asyncpg://" + v[len("postgresql://"):]
+        # Render emits `postgres://`, Heroku/older Render emit `postgresql://`.
+        # SQLAlchemy 2.x rejects `postgres://` entirely and needs the asyncpg driver.
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                return "postgresql+asyncpg://" + v[len("postgres://"):]
+            if v.startswith("postgresql://"):
+                return "postgresql+asyncpg://" + v[len("postgresql://"):]
         return v
 
 

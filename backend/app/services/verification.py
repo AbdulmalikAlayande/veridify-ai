@@ -56,32 +56,38 @@ async def process_verification(
     cached_row = await queries.get_cached_verification(db, image_hash, client.id)
 
     if cached_row is not None:
-        is_cached = True
-        scores = {
+        # Cache hit: reuse the prior result without billing or writing a new row.
+        # Spec contract — "the same image submitted twice does not charge twice."
+        return {
+            "verification_id": cached_row.id,
             "trust_score": cached_row.trust_score,
             "verdict": cached_row.verdict,
             "confidence": cached_row.confidence,
-            "spatial_score": cached_row.spatial_score or 0,
-            "frequency_score": cached_row.frequency_score or 0,
             "processing_ms": cached_row.processing_ms or 0,
+            "cached": True,
+            "billed_naira": 0,
+            "balance_remaining": client.balance_naira,
+            "breakdown": {
+                "spatial_score": cached_row.spatial_score or 0,
+                "frequency_score": cached_row.frequency_score or 0,
+            },
         }
-    else:
-        is_cached = False
-        temp_path: Path | None = None
+
+    temp_path: Path | None = None
+    try:
+        temp_path = await inference_service.save_temp_image(image_bytes, ext)
         try:
-            temp_path = await inference_service.save_temp_image(image_bytes, ext)
-            try:
-                scores = await inference_service.run_inference(image_bytes, image_hash)
-            except NotImplementedError as exc:
-                raise InferenceFailedError(str(exc)) from exc
-            except VeridifiError:
-                raise
-            except Exception as exc:
-                logger.exception("Inference crashed for client=%s", client.id)
-                raise InferenceFailedError("Inference engine error") from exc
-        finally:
-            if temp_path is not None:
-                inference_service.delete_temp_image(temp_path)
+            scores = await inference_service.run_inference(image_bytes, image_hash)
+        except NotImplementedError as exc:
+            raise InferenceFailedError(str(exc)) from exc
+        except VeridifiError:
+            raise
+        except Exception as exc:
+            logger.exception("Inference crashed for client=%s", client.id)
+            raise InferenceFailedError("Inference engine error") from exc
+    finally:
+        if temp_path is not None:
+            inference_service.delete_temp_image(temp_path)
 
     verification = await queries.create_verification(
         db,
@@ -94,7 +100,7 @@ async def process_verification(
         frequency_score=scores["frequency_score"],
         processing_ms=scores["processing_ms"],
         billed_amount=cost,
-        cached=is_cached,
+        cached=False,
         image_size_bytes=len(image_bytes),
         image_mime_type=mime_type,
     )
@@ -109,7 +115,7 @@ async def process_verification(
         type="DEBIT",
         balance_before=balance_before,
         balance_after=balance_after,
-        description="Image verification" + (" (cached)" if is_cached else ""),
+        description="Image verification",
     )
 
     await queries.update_verification_transaction_id(db, verification.id, txn.id)
@@ -122,7 +128,7 @@ async def process_verification(
         "verdict": scores["verdict"],
         "confidence": scores["confidence"],
         "processing_ms": scores["processing_ms"],
-        "cached": is_cached,
+        "cached": False,
         "billed_naira": cost,
         "balance_remaining": balance_after,
         "breakdown": {
