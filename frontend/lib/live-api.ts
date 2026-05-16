@@ -268,7 +268,7 @@ export async function fundLiveAccount(
 
   try {
     const raw = await liveFetch<RawFundResponse>(
-      "/account/fund  ",
+      "/account/fund",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
