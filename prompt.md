@@ -1,1 +1,0 @@
-Read all three files in order: SPECIFICATIONS first, GUIDELINES second, BUILD_ORDER third. Then begin at Step 0 and work through to completion. After each step, confirm it works before moving on.

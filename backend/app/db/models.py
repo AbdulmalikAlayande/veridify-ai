@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
@@ -13,7 +13,9 @@ if TYPE_CHECKING:
 
 
 def _utcnow() -> datetime:
-    return datetime.utcnow()
+    # Aware datetime — DateTime(timezone=True) columns expect tzinfo; a naive
+    # value would be interpreted in the server's local TZ and drift by its offset.
+    return datetime.now(timezone.utc)
 
 
 class Client(Base):
