@@ -1,4 +1,4 @@
-"""Account business logic — orchestrates Squad + database for client lifecycle."""
+"""Account business logic — orchestrates Squad and database for client lifecycle."""
 
 from __future__ import annotations
 
