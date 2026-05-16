@@ -1,17 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowRightIcon, ImagePlusIcon, LoaderCircleIcon, WalletCardsIcon } from "lucide-react"
+import { ArrowRightIcon, ImagePlusIcon, LoaderCircleIcon, RefreshCwIcon, WalletCardsIcon } from "lucide-react"
 import { useAppState } from "@/components/app-state-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MockApiError } from "@/lib/api"
-
-function formatCurrency(amount: number) {
-  return `N${amount.toLocaleString()}`
-}
+import { formatNaira } from "@/lib/utils"
 
 export function VerifyScreen() {
   const router = useRouter()
@@ -22,6 +19,21 @@ export function VerifyScreen() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [timerMs, setTimerMs] = useState(0)
   const [error, setError] = useState<string | null>(null)
+
+  const previewUrl = useMemo(
+    () => (selectedFile ? URL.createObjectURL(selectedFile) : null),
+    [selectedFile],
+  )
+
+  useEffect(() => {
+    if (!previewUrl) {
+      return
+    }
+
+    return () => {
+      URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
 
   useEffect(() => {
     if (!isProcessing) {
@@ -37,6 +49,12 @@ export function VerifyScreen() {
       window.clearInterval(intervalId)
     }
   }, [isProcessing])
+
+  function formatFileSize(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+  }
 
   if (!snapshot.account) {
     return (
@@ -106,20 +124,40 @@ export function VerifyScreen() {
                 setSelectedFile(file)
               }
             }}
-            className={`flex min-h-80 w-full flex-col items-center justify-center rounded-[32px] border-2 border-dashed px-6 text-center transition-colors ${
+            className={`group/dropzone relative flex min-h-80 w-full flex-col items-center justify-center overflow-hidden rounded-[32px] border-2 border-dashed px-6 py-6 text-center transition-colors ${
               isDragging ? "border-primary bg-primary/10" : "border-border bg-muted/35 hover:bg-muted/50"
             }`}
           >
-            <ImagePlusIcon className="size-10 text-primary" />
-            <p className="mt-4 font-heading text-3xl">Drop a suspicious image here</p>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              JPEG, PNG, or WEBP. The mock flow still follows the intended backend contract and charges the wallet.
-            </p>
-            {selectedFile ? (
-              <div className="mt-6 rounded-full bg-white/80 px-4 py-2 text-sm font-medium shadow-sm">
-                {selectedFile.name}
+            {previewUrl && selectedFile ? (
+              <div className="flex w-full flex-col items-center gap-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewUrl}
+                  alt={selectedFile.name}
+                  className="max-h-72 w-auto max-w-full rounded-2xl border border-white/60 bg-white object-contain shadow-sm"
+                />
+                <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
+                  <span className="rounded-full bg-white/80 px-3 py-1 font-medium shadow-sm">
+                    {selectedFile.name}
+                  </span>
+                  <span className="rounded-full bg-white/70 px-3 py-1 text-xs text-muted-foreground shadow-sm">
+                    {formatFileSize(selectedFile.size)}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                    <RefreshCwIcon className="size-3" />
+                    Click to replace
+                  </span>
+                </div>
               </div>
-            ) : null}
+            ) : (
+              <>
+                <ImagePlusIcon className="size-10 text-primary" />
+                <p className="mt-4 font-heading text-3xl">Drop a suspicious image here</p>
+                <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                  JPEG, PNG, or WEBP. The mock flow still follows the intended backend contract and charges the wallet.
+                </p>
+              </>
+            )}
           </button>
 
           <input
@@ -140,7 +178,17 @@ export function VerifyScreen() {
               {isProcessing ? "Processing..." : "Submit for verification"}
               {isProcessing ? <LoaderCircleIcon className="size-4 animate-spin" /> : <ArrowRightIcon className="size-4" />}
             </Button>
-            <Button variant="outline" className="flex-1" onClick={() => setSelectedFile(null)}>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setSelectedFile(null)
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = ""
+                }
+              }}
+              disabled={isProcessing || !selectedFile}
+            >
               Clear selection
             </Button>
           </div>
@@ -157,11 +205,11 @@ export function VerifyScreen() {
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-[24px] bg-primary p-5 text-primary-foreground">
               <p className="text-sm text-primary-foreground/75">Current balance</p>
-              <p className="mt-3 font-heading text-4xl">{formatCurrency(snapshot.account.balanceNaira)}</p>
+              <p className="mt-3 font-heading text-4xl">{formatNaira(snapshot.account.balanceNaira)}</p>
             </div>
             <div className="rounded-[24px] bg-secondary p-5">
               <p className="text-sm text-muted-foreground">Charge per request</p>
-              <p className="mt-3 font-heading text-4xl">{formatCurrency(verificationCostNaira)}</p>
+              <p className="mt-3 font-heading text-4xl">{formatNaira(verificationCostNaira)}</p>
             </div>
           </CardContent>
         </Card>

@@ -9,7 +9,14 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { createAccountRequest, fundAccountRequest, getApiMode, MockApiError, verifyImageRequest } from "@/lib/api"
+import {
+  createAccountRequest,
+  fundAccountRequest,
+  getApiMode,
+  MockApiError,
+  refreshAccountRequest,
+  verifyImageRequest,
+} from "@/lib/api"
 import { createEmptySnapshot, STORAGE_KEY, VERIFICATION_COST_NAIRA } from "@/lib/mock-data"
 import type {
   AppSnapshot,
@@ -28,6 +35,7 @@ interface AppStateContextValue {
   createAccount: (input: CreateAccountInput) => Promise<void>
   fundAccount: (input: FundAccountInput) => Promise<{ paymentLink: string; message: string }>
   verifyImage: (file: File) => Promise<VerificationRecord>
+  refreshAccount: () => Promise<void>
   resetWorkspace: () => void
 }
 
@@ -106,6 +114,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             setSnapshot(result.snapshot)
           })
           return result.verification
+        } finally {
+          setIsBusy(false)
+        }
+      },
+      async refreshAccount() {
+        if (!snapshot.account) {
+          return
+        }
+
+        setIsBusy(true)
+
+        try {
+          const nextSnapshot = await refreshAccountRequest(snapshot)
+          startTransition(() => {
+            setSnapshot(nextSnapshot)
+          })
         } finally {
           setIsBusy(false)
         }

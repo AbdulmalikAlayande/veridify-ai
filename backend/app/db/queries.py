@@ -118,7 +118,7 @@ async def get_client_by_api_key_hash(db: AsyncSession, key_hash: str) -> Client 
 
 async def update_api_key_last_used(db: AsyncSession, key_hash: str) -> None:
     await db.execute(
-        update(ApiKey).where(ApiKey.key_hash == key_hash).values(last_used_at=datetime.utcnow())
+        update(ApiKey).where(ApiKey.key_hash == key_hash).values(last_used_at=datetime.now(timezone.utc))
     )
 
 

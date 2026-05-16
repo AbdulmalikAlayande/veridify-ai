@@ -23,10 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { VerificationFilter } from "@/lib/types"
-
-function formatCurrency(amount: number) {
-  return `N${amount.toLocaleString()}`
-}
+import { formatNaira } from "@/lib/utils"
 
 export function TransactionsScreen() {
   const { snapshot } = useAppState()
@@ -104,7 +101,7 @@ export function TransactionsScreen() {
           <CardHeader>
             <CardTitle>Balance now</CardTitle>
           </CardHeader>
-          <CardContent className="font-heading text-4xl">{formatCurrency(snapshot.account.balanceNaira)}</CardContent>
+          <CardContent className="font-heading text-4xl">{formatNaira(snapshot.account.balanceNaira)}</CardContent>
         </Card>
       </div>
 
@@ -136,7 +133,7 @@ export function TransactionsScreen() {
                       <StatusBadge verdict={verification.verdict} />
                     </TableCell>
                     <TableCell>{verification.trustScore}</TableCell>
-                    <TableCell>{formatCurrency(verification.billedNaira)}</TableCell>
+                    <TableCell>{formatNaira(verification.billedNaira)}</TableCell>
                   </TableRow>
                 ))
               )}

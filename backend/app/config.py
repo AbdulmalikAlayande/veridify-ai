@@ -1,7 +1,14 @@
+import tempfile
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _default_temp_dir() -> str:
+    # Cross-platform default — Linux/Render → /tmp/veridify, Windows local dev → %TEMP%\veridify.
+    return str(Path(tempfile.gettempdir()) / "veridify")
 
 
 class Settings(BaseSettings):
@@ -33,7 +40,7 @@ class Settings(BaseSettings):
     verification_cost_naira: int = 175
     rate_limit_per_minute: int = 60
     max_image_size_mb: int = 10
-    temp_file_dir: str = "/tmp/veridifi"
+    temp_file_dir: str = _default_temp_dir()
     image_retention_seconds: int = 60
     cache_ttl_hours: int = 24
 

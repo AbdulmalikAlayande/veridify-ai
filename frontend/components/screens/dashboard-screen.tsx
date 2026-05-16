@@ -10,9 +10,11 @@ import {
   CircleAlertIcon,
   CoinsIcon,
   CreditCardIcon,
+  ExternalLinkIcon,
   HistoryIcon,
   KeyRoundIcon,
   ReceiptIcon,
+  RefreshCwIcon,
   ScanSearchIcon,
   SparklesIcon,
   TrendingUpIcon,
@@ -25,11 +27,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MockApiError } from "@/lib/api"
-import { cn } from "@/lib/utils"
-
-function formatCurrency(amount: number) {
-  return `N${amount.toLocaleString()}`
-}
+import { cn, formatNaira } from "@/lib/utils"
 
 function formatRelative(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
@@ -67,10 +65,11 @@ const quickActions = [
 ] as const
 
 export function DashboardScreen() {
-  const { snapshot, fundAccount, isBusy, verificationCostNaira } = useAppState()
+  const { snapshot, fundAccount, refreshAccount, isBusy, verificationCostNaira, apiMode } = useAppState()
   const [amount, setAmount] = useState("10000")
-  const [message, setMessage] = useState<string | null>(null)
+  const [fundingResult, setFundingResult] = useState<{ message: string; paymentLink: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const isLive = apiMode === "live"
 
   if (!snapshot.account) {
     return (
@@ -90,12 +89,12 @@ export function DashboardScreen() {
 
   async function handleFund(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setMessage(null)
+    setFundingResult(null)
     setError(null)
 
     try {
       const result = await fundAccount({ amountNaira: Number(amount) })
-      setMessage(`${result.message} Payment link: ${result.paymentLink}`)
+      setFundingResult({ message: result.message, paymentLink: result.paymentLink })
     } catch (cause) {
       if (cause instanceof MockApiError) {
         setError(cause.message)
@@ -148,7 +147,7 @@ export function DashboardScreen() {
                   <WalletCardsIcon className="size-4" />
                 </span>
               </div>
-              <p className="relative mt-3 font-heading text-4xl">{formatCurrency(snapshot.account.balanceNaira)}</p>
+              <p className="relative mt-3 font-heading text-4xl">{formatNaira(snapshot.account.balanceNaira)}</p>
               <p className="relative mt-2 inline-flex items-center gap-1 text-xs text-primary-foreground/75">
                 <TrendingUpIcon className="size-3" />
                 Wallet synced in real time
@@ -177,7 +176,7 @@ export function DashboardScreen() {
                   <ReceiptIcon className="size-4" />
                 </span>
               </div>
-              <p className="mt-3 font-heading text-4xl">{formatCurrency(verificationCostNaira)}</p>
+              <p className="mt-3 font-heading text-4xl">{formatNaira(verificationCostNaira)}</p>
               <p className="mt-2 text-xs text-muted-foreground">Flat charge per verification request</p>
             </div>
           </CardContent>
@@ -218,7 +217,9 @@ export function DashboardScreen() {
             <p className="section-kicker">Funding</p>
             <CardTitle className="font-heading text-2xl">Top up the verification wallet</CardTitle>
             <CardDescription>
-              In live mode this comes from Squad. For now the UI simulates the webhook-confirmed credit instantly.
+              {isLive
+                ? "Backend returns a Squad payment link. Balance updates after Squad's webhook confirms the transfer."
+                : "Mock mode simulates the webhook-confirmed credit instantly. Live mode waits on Squad."}
             </CardDescription>
           </CardHeader>
           <CardContent className="relative space-y-4">
@@ -230,7 +231,7 @@ export function DashboardScreen() {
                 </Label>
                 <div className="relative">
                   <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
-                    N
+                    ₦
                   </span>
                   <Input
                     id="fund-amount"
@@ -257,7 +258,7 @@ export function DashboardScreen() {
                         : "border-border bg-white/70 text-muted-foreground hover:border-primary/40 hover:text-foreground",
                     )}
                   >
-                    N{Number(preset).toLocaleString()}
+                    ₦{Number(preset).toLocaleString()}
                   </button>
                 ))}
               </div>
@@ -272,10 +273,34 @@ export function DashboardScreen() {
               </Button>
             </form>
 
-            {message ? (
-              <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-700">
-                <CheckCircle2Icon className="mt-0.5 size-4 shrink-0" />
-                <p>{message}</p>
+            {fundingResult ? (
+              <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-800">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2Icon className="mt-0.5 size-4 shrink-0" />
+                  <p>{fundingResult.message}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={fundingResult.paymentLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-white/80 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
+                  >
+                    Open Squad payment link
+                    <ExternalLinkIcon className="size-3.5" />
+                  </a>
+                  {isLive ? (
+                    <button
+                      type="button"
+                      onClick={refreshAccount}
+                      disabled={isBusy}
+                      className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-white/80 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50"
+                    >
+                      <RefreshCwIcon className={cn("size-3.5", isBusy && "animate-spin")} />
+                      Refresh balance
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ) : null}
             {error ? (
@@ -338,10 +363,10 @@ export function DashboardScreen() {
                     <div className="text-right">
                       <p className={cn("text-sm font-semibold", isCredit ? "text-emerald-700" : "text-foreground")}>
                         {isCredit ? "+" : "-"}
-                        {formatCurrency(Math.abs(transaction.amountNaira))}
+                        {formatNaira(Math.abs(transaction.amountNaira))}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatCurrency(transaction.balanceAfter)} left
+                        {formatNaira(transaction.balanceAfter)} left
                       </p>
                     </div>
                   </div>

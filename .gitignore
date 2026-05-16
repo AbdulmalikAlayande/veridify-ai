@@ -14,8 +14,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Anchor Python build dirs to repo root so they don't swallow frontend/lib/ etc.
+/lib/
+/lib64/
 parts/
 sdist/
 var/

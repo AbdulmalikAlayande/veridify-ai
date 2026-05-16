@@ -13,7 +13,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { cn } from "@/lib/utils"
+import { cn, formatNaira } from "@/lib/utils"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
@@ -21,10 +21,6 @@ const navItems = [
   { href: "/result", label: "Result" },
   { href: "/transactions", label: "Transactions" },
 ]
-
-function formatCurrency(amount: number) {
-  return `N${amount.toLocaleString()}`
-}
 
 function NavigationLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
@@ -81,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="rounded-full border border-white/70 bg-white/75 px-4 py-2 text-sm shadow-sm">
                   <span className="text-muted-foreground">{snapshot.account.name}</span>{" "}
                   <span className="font-semibold text-foreground">
-                    {formatCurrency(snapshot.account.balanceNaira)}
+                    {formatNaira(snapshot.account.balanceNaira)}
                   </span>
                 </div>
               ) : null}
@@ -121,7 +117,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <WalletCardsIcon className="size-4 text-primary" />
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Balance</p>
-                      <p className="font-semibold">{formatCurrency(snapshot.account.balanceNaira)}</p>
+                      <p className="font-semibold">{formatNaira(snapshot.account.balanceNaira)}</p>
                     </div>
                   </div>
                 </>

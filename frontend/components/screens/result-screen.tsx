@@ -8,10 +8,7 @@ import { useAppState } from "@/components/app-state-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getVerificationExplanation } from "@/lib/mock-data"
-
-function formatCurrency(amount: number) {
-  return `N${amount.toLocaleString()}`
-}
+import { formatNaira } from "@/lib/utils"
 
 export function ResultScreen() {
   const { latestVerification } = useAppState()
@@ -59,12 +56,12 @@ export function ResultScreen() {
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-[24px] bg-secondary p-5">
               <p className="section-kicker">Charge</p>
-              <p className="mt-3 font-heading text-4xl">{formatCurrency(latestVerification.billedNaira)}</p>
+              <p className="mt-3 font-heading text-4xl">{formatNaira(latestVerification.billedNaira)}</p>
               <p className="mt-2 text-sm text-muted-foreground">Deducted from the client balance for this verification.</p>
             </div>
             <div className="rounded-[24px] bg-primary p-5 text-primary-foreground">
               <p className="section-kicker text-primary-foreground/75">Remaining balance</p>
-              <p className="mt-3 font-heading text-4xl">{formatCurrency(latestVerification.balanceRemaining)}</p>
+              <p className="mt-3 font-heading text-4xl">{formatNaira(latestVerification.balanceRemaining)}</p>
               <p className="mt-2 text-sm text-primary-foreground/75">Visible wallet state after the transaction completes.</p>
             </div>
           </CardContent>

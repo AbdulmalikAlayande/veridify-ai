@@ -174,7 +174,7 @@ export function OnboardingScreen() {
               </CardHeader>
               <CardContent className="relative space-y-4">
                 <CopyField
-                  label="Virtual account · "
+                  label="Virtual account"
                   value={`${snapshot.account.squadVirtualAccount.accountNumber} — ${snapshot.account.squadVirtualAccount.bankName}`}
                 />
                 <CopyField label="API key" value={snapshot.account.apiKey} mono />
